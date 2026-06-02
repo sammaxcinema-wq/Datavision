@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+  <title>ATS CV Generator — Deep Purple Glassmorphism</title>
+  <!-- Google Font & Font Awesome 6 (Free) for icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <!-- React & ReactDOM & Babel Standalone -->
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: #0d0b1e;
+      overflow-x: hidden;
+    }
+    /* custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.03);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(167,139,250,0.4);
+      border-radius: 10px;
+    }
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    /* responsive adjustments */
+    @media (max-width: 820px) {
+      .main-layout {
+        flex-direction: column !important;
+      }
+      .form-panel {
+        width: 100% !important;
+        border-right: none !important;
+        border-bottom: 1px solid rgba(255,255,255,0.07);
+        max-height: 55vh;
+      }
+      .preview-panel {
+        padding: 16px 12px !important;
+      }
+      .header-nav {
+        gap: 2px !important;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        justify-content: flex-start;
+      }
+      .header-right {
+        gap: 6px !important;
+      }
+      .nav-pill span {
+        font-size: 10px;
+      }
+      .cv-preview-container {
+        border-radius: 16px !important;
+      }
+    }
+    @media (max-width: 560px) {
+      .header-logo span:first-child {
+        font-size: 12px;
+      }
+      .header-right .score-ring-text {
+        display: none;
+      }
+      .btn-export, .btn-share {
+        padding: 5px 10px !important;
+        font-size: 10px !important;
+      }
+      .form-panel {
+        max-height: 50vh;
+      }
+    }
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #cv-print-root, #cv-print-root * {
+        visibility: visible;
+      }
+      #cv-print-root {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="env,react">
+
+// --------------------------------------------------------------
+// ICON WRAPPER (Font Awesome 6)
+// --------------------------------------------------------------
+function Icon({ name, size = 14, color = "currentColor", style = {} }) {
+  const iconMap = {
+    Download: "fa-download", Share2: "fa-share-alt", Eye: "fa-eye", EyeOff: "fa-eye-slash",
+    Plus: "fa-plus", Trash2: "fa-trash-alt", ChevronDown: "fa-chevron-down", ChevronUp: "fa-chevron-up",
+    User: "fa-user", Briefcase: "fa-briefcase", GraduationCap: "fa-graduation-cap", Star: "fa-star",
+    Globe: "fa-globe", Award: "fa-award", BookOpen: "fa-book-open", Zap: "fa-bolt",
+    CheckCircle: "fa-check-circle", AlertCircle: "fa-exclamation-circle", BarChart2: "fa-chart-bar",
+    FileText: "fa-file-alt", X: "fa-times", RefreshCw: "fa-sync-alt", Phone: "fa-phone",
+    Mail: "fa-envelope", MapPin: "fa-map-marker-alt", Link2: "fa-link"
+  };
+  const faClass = iconMap[name] || "fa-circle";
+  return React.createElement("i", {
+    className: `fas ${faClass}`,
+    style: { fontSize: `${size}px`, color: color, width: `${size}px`, ...style }
+  });
+}
+
+// --------------------------------------------------------------
+// DESIGN TOKENS
+// --------------------------------------------------------------
+const T = {
+  bg: "#0d0b1e", bgMid: "#130f2a", card: "rgba(255,255,255,0.04)",
+  cardBorder: "rgba(255,255,255,0.09)", glass: "rgba(30,20,60,0.70)",
+  glassHover: "rgba(40,28,78,0.85)", accent: "#f472b6", teal: "#2dd4bf",
+  purple: "#a78bfa", white: "#f0eeff", muted: "rgba(200,190,255,0.45)",
+  input: "rgba(255,255,255,0.06)", inputBd: "rgba(255,255,255,0.12)",
+  inputFocus: "#a78bfa", header: "rgba(13,11,30,0.92)"
+};
+
+// --------------------------------------------------------------
+// INITIAL CV
+// --------------------------------------------------------------
+const EMPTY_CV = {
+  personalInfo: { name: "", title: "", email: "", phone: "", location: "", website: "", linkedin: "", github: "", summary: "", photoUrl: "" },
+  experience: [{ id: crypto.randomUUID(), company: "", role: "", startDate: "", endDate: "", current: false, bullets: [""] }],
+  education: [{ id: crypto.randomUUID(), institution: "", degree: "", field: "", startDate: "", endDate: "", description: "" }],
+  skills: [{ id: crypto.randomUUID(), name: "", level: 80 }],
+  languages: [{ id: crypto.randomUUID(), name: "", proficiency: "Fluent" }],
+  certifications: [{ id: crypto.randomUUID(), name: "", issuer: "", date: "", url: "" }],
+  references: [{ id: crypto.randomUUID(), name: "", title: "", company: "", phone: "", email: "" }],
+  hobbies: "",
+  atsMode: false,
+};
+
+// --------------------------------------------------------------
+// HOOKS
+// --------------------------------------------------------------
+function useDebounce(value, delay) {
+  const [dv, setDv] = React.useState(value);
+  React.useEffect(() => { const t = setTimeout(() => setDv(value), delay); return () => clearTimeout(t); }, [value, delay]);
+  return dv;
+}
+function useAutosave(cvData) {
+  const [status, setStatus] = React.useState("idle");
+  const debounced = useDebounce(cvData, 300);
+  React.useEffect(() => {
+    if (!debounced) return;
+    setStatus("saving");
+    try { localStorage.setItem("ats_cv_v2", JSON.stringify(debounced)); setStatus("saved"); } catch { setStatus("idle"); }
+    const t = setTimeout(() => setStatus("idle"), 1600);
+    return () => clearTimeout(t);
+  }, [debounced]);
+  return status;
+}
+
+function computeATSScore(cv) {
+  let score = 0; const tips = [];
+  const pi = cv.personalInfo;
+  if (pi.name?.trim()) score += 5; else tips.push("Add your full name");
+  if (pi.email?.trim()) score += 5; else tips.push("Add a professional email");
+  if (pi.phone?.trim()) score += 4; else tips.push("Add your phone number");
+  if (pi.location?.trim()) score += 3; else tips.push("Add your city/location");
+  if (pi.linkedin?.trim()) score += 3; else tips.push("Add your LinkedIn URL");
+  if (pi.summary?.trim().length > 80) score += 10; else tips.push("Write a summary (80+ chars)");
+  const allBullets = cv.experience?.flatMap(e => e.bullets || []).join(" ").toLowerCase();
+  const kw = ["achieved","managed","increased","reduced","delivered","led","improved","built","%","revenue"];
+  const kwCount = kw.filter(k => allBullets.includes(k)).length;
+  score += Math.min(kwCount * 3, 15);
+  if (kwCount < 3) tips.push("Use metrics: %, achieved, managed...");
+  if (cv.experience?.some(e => e.bullets?.some(b => b.trim().length > 10))) score += 10; else tips.push("Add bullet points to experience");
+  if (cv.experience?.length >= 2) score += 10; else tips.push("Add 2+ experience entries");
+  if (cv.education?.some(e => e.institution?.trim())) score += 10; else tips.push("Add education details");
+  if (cv.education?.some(e => e.degree?.trim())) score += 5; else tips.push("Include your degree");
+  const sk = cv.skills?.filter(s => s.name?.trim()).length || 0;
+  score += Math.min(sk * 2, 15);
+  if (sk < 5) tips.push("Add 5+ skills for keyword density");
+  if (cv.certifications?.some(c => c.name?.trim())) score += 5;
+  return { score: Math.min(score, 100), tips };
+}
+
+function levelLabel(p) {
+  if (p >= 90) return "Expert";
+  if (p >= 70) return "Advanced";
+  if (p >= 50) return "Intermediate";
+  return "Beginner";
+}
+
+function injectPrintCSS() {
+  if (document.getElementById("print-style-v2")) return;
+  const style = document.createElement("style");
+  style.id = "print-style-v2";
+  style.textContent = `@media print{body *{visibility:hidden}#cv-print-root,#cv-print-root *{visibility:visible}#cv-print-root{position:fixed;top:0;left:0;width:100%;margin:0;padding:0;box-shadow:none}@page{margin:0mm}}`;
+  document.head.appendChild(style);
+}
+
+// --------------------------------------------------------------
+// FORM COMPONENTS (glass)
+// --------------------------------------------------------------
+const inputBase = {
+  width: "100%", background: T.input, border: `1px solid ${T.inputBd}`, borderRadius: "10px",
+  padding: "9px 12px", fontSize: "12px", color: T.white, outline: "none", boxSizing: "border-box",
+  transition: "border-color .2s, box-shadow .2s", fontFamily: "inherit"
+};
+function Inp({ value, onChange, placeholder, type = "text", style = {} }) {
+  const [focus, setFocus] = React.useState(false);
+  return React.createElement("input", {
+    type, value: value || "", placeholder, onChange: e => onChange(e.target.value),
+    onFocus: () => setFocus(true), onBlur: () => setFocus(false),
+    style: { ...inputBase, ...(focus ? { borderColor: T.inputFocus, boxShadow: `0 0 0 3px rgba(167,139,250,.15)` } : {}), ...style }
+  });
+}
+function Tarea({ value, onChange, placeholder, rows = 3 }) {
+  const [focus, setFocus] = React.useState(false);
+  return React.createElement("textarea", {
+    value: value || "", placeholder, rows, onChange: e => onChange(e.target.value),
+    onFocus: () => setFocus(true), onBlur: () => setFocus(false),
+    style: { ...inputBase, resize: "vertical", ...(focus ? { borderColor: T.inputFocus, boxShadow: `0 0 0 3px rgba(167,139,250,.15)` } : {}) }
+  });
+}
+function Sel({ value, onChange, options }) {
+  return React.createElement("select", {
+    value: value || "", onChange: e => onChange(e.target.value),
+    style: { ...inputBase, appearance: "none", cursor: "pointer" }
+  }, options.map(opt => React.createElement("option", { key: opt, value: opt, style: { background: "#1a133a" } }, opt)));
+}
+function FField({ label, children, hint }) {
+  return React.createElement("div", { style: { marginBottom: "12px" } },
+    React.createElement("div", { style: { fontSize: "10px", fontWeight: 700, color: T.teal, letterSpacing: "1px", textTransform: "uppercase", marginBottom: "5px" } }, label),
+    children,
+    hint && React.createElement("div", { style: { fontSize: "10px", color: T.muted, marginTop: "4px" } }, hint)
+  );
+}
+function GlassCard({ children, style = {}, glow = false }) {
+  return React.createElement("div", { style: { background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: "16px", padding: "16px", marginBottom: "10px", backdropFilter: "blur(12px)", ...(glow ? { boxShadow: `0 0 24px rgba(244,114,182,.08)` } : {}), ...style } }, children);
+}
+function SectionHeading({ children }) {
+  return React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" } },
+    React.createElement("span", { style: { fontSize: "10px", fontWeight: 800, color: T.teal, letterSpacing: "2px", textTransform: "uppercase" } }, children),
+    React.createElement("div", { style: { flex: 1, height: "1px", background: `linear-gradient(90deg,${T.teal}55,transparent)` } })
+  );
+}
+function Collapsible({ title, icon, children, defaultOpen = false, accent = false }) {
+  const [open, setOpen] = React.useState(defaultOpen);
+  return React.createElement("div", { style: { border: `1px solid ${accent ? T.accent + "44" : T.cardBorder}`, borderRadius: "14px", marginBottom: "8px", overflow: "hidden" } },
+    React.createElement("button", { onClick: () => setOpen(o => !o), style: { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: open ? T.glassHover : T.glass, border: "none", cursor: "pointer", color: T.white, fontSize: "12px", fontWeight: 600, transition: "background .2s" } },
+      React.createElement("span", { style: { display: "flex", alignItems: "center", gap: "7px" } }, icon, title),
+      open ? React.createElement(Icon, { name: "ChevronUp", size: 13, color: T.muted }) : React.createElement(Icon, { name: "ChevronDown", size: 13, color: T.muted })
+    ),
+    open && React.createElement("div", { style: { padding: "14px", background: "rgba(10,7,28,0.6)" } }, children)
+  );
+}
+
+// --------------------------------------------------------------
+// PREVIEWS (ATS + VISUAL)
+// --------------------------------------------------------------
+function ATSPreview({ cv }) {
+  const pi = cv.personalInfo;
+  return React.createElement("div", { id: "cv-print-root", style: { fontFamily: "Arial, Helvetica, sans-serif", fontSize: "10.5pt", lineHeight: "1.6", color: "#111", background: "#fff", padding: "16mm 18mm", width: "210mm", minHeight: "297mm", boxSizing: "border-box" } },
+    React.createElement("div", { style: { borderBottom: "2.5px solid #111", paddingBottom: "10px", marginBottom: "14px" } },
+      React.createElement("h1", { style: { fontSize: "20pt", fontWeight: 700, margin: 0 } }, pi.name || "Your Name"),
+      React.createElement("p", { style: { fontSize: "12pt", margin: "2px 0 8px", color: "#444" } }, pi.title || "Job Title"),
+      React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: "14px", fontSize: "8.5pt", color: "#555" } },
+        pi.email && React.createElement("span", null, "✉ ", pi.email),
+        pi.phone && React.createElement("span", null, "☎ ", pi.phone),
+        pi.location && React.createElement("span", null, "⌖ ", pi.location),
+        pi.website && React.createElement("span", null, "🌐 ", pi.website),
+        pi.linkedin && React.createElement("span", null, "in ", pi.linkedin)
+      )
+    ),
+    pi.summary && React.createElement(ATSSection, { title: "Professional Summary" }, React.createElement("p", { style: { margin: 0 } }, pi.summary)),
+    cv.experience?.some(e => e.company || e.role) && React.createElement(ATSSection, { title: "Work Experience" }, cv.experience.filter(e => e.company || e.role).map(exp => React.createElement("div", { key: exp.id, style: { marginBottom: "10px" } },
+      React.createElement("div", { style: { display: "flex", justifyContent: "space-between" } }, React.createElement("strong", null, exp.role), React.createElement("span", { style: { color: "#666", fontSize: "8.5pt" } }, exp.startDate, exp.startDate && " – ", exp.current ? "Present" : exp.endDate)),
+      React.createElement("div", { style: { color: "#555", marginBottom: "3px", fontStyle: "italic" } }, exp.company),
+      exp.bullets?.filter(b => b.trim()).map((b, i) => React.createElement("div", { key: i, style: { paddingLeft: "14px" } }, "• ", b))
+    ))),
+    cv.education?.some(e => e.institution) && React.createElement(ATSSection, { title: "Education" }, cv.education.filter(e => e.institution).map(ed => React.createElement("div", { key: ed.id, style: { marginBottom: "8px" } },
+      React.createElement("div", { style: { display: "flex", justifyContent: "space-between" } }, React.createElement("strong", null, ed.degree, ed.field ? ` in ${ed.field}` : ""), React.createElement("span", { style: { color: "#666", fontSize: "8.5pt" } }, ed.startDate, ed.startDate && " – ", ed.endDate)),
+      React.createElement("div", { style: { color: "#555", fontStyle: "italic" } }, ed.institution),
+      ed.description && React.createElement("p", { style: { margin: "3px 0 0", fontSize: "9pt" } }, ed.description)
+    ))),
+    cv.skills?.some(s => s.name) && React.createElement(ATSSection, { title: "Skills" }, React.createElement("p", { style: { margin: 0 } }, cv.skills.filter(s => s.name).map(s => `${s.name} (${levelLabel(s.level)})`).join(" • "))),
+    cv.certifications?.some(c => c.name) && React.createElement(ATSSection, { title: "Certifications" }, cv.certifications.filter(c => c.name).map(c => React.createElement("div", { key: c.id }, "• ", c.name, c.issuer ? ` — ${c.issuer}` : "", c.date ? ` (${c.date})` : ""))),
+    cv.languages?.some(l => l.name) && React.createElement(ATSSection, { title: "Languages" }, React.createElement("p", { style: { margin: 0 } }, cv.languages.filter(l => l.name).map(l => `${l.name} (${l.proficiency})`).join(" • "))),
+    cv.references?.some(r => r.name) && React.createElement(ATSSection, { title: "References" }, cv.references.filter(r => r.name).map(r => React.createElement("div", { key: r.id, style: { marginBottom: "6px" } }, React.createElement("strong", null, r.name), " — ", r.title, r.company ? `, ${r.company}` : "", React.createElement("br", null), r.email && React.createElement("span", null, "✉ ", r.email, "  "), r.phone && React.createElement("span", null, "☎ ", r.phone))))
+  );
+}
+function ATSSection({ title, children }) {
+  return React.createElement("div", { style: { marginBottom: "13px" } }, React.createElement("h2", { style: { fontSize: "10.5pt", fontWeight: 700, textTransform: "uppercase", borderBottom: "1.5px solid #888", paddingBottom: "3px", marginBottom: "7px", letterSpacing: "0.5px" } }, title), children);
+}
+
+function VisualPreview({ cv }) {
+  const pi = cv.personalInfo;
+  const lavender = "#a78bfa";
+  const accent = "#f472b6";
+  const teal = "#2dd4bf";
+  const PreviewCard = ({ children, glow }) => React.createElement("div", { style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: "14px", padding: "14px 16px", marginBottom: "10px", backdropFilter: "blur(8px)", ...(glow ? { boxShadow: "0 0 30px rgba(244,114,182,.06)" } : {}) } }, children);
+  const PreviewSectionTitle = ({ children, color }) => React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "7px", marginBottom: "9px" } }, React.createElement("span", { style: { fontSize: "8pt", fontWeight: 800, color, letterSpacing: "2px", textTransform: "uppercase" } }, children), React.createElement("div", { style: { flex: 1, height: "1px", background: `linear-gradient(90deg,${color}55,transparent)` } }));
+  return React.createElement("div", { id: "cv-print-root", style: { width: "210mm", minHeight: "297mm", background: "linear-gradient(160deg,#0d0b1e 0%,#1a0e35 50%,#0f1628 100%)", fontFamily: "'Inter',system-ui,sans-serif", fontSize: "9pt", padding: "14px", boxSizing: "border-box", color: T.white } },
+    React.createElement("div", { style: { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: "18px", padding: "20px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", backdropFilter: "blur(10px)", flexWrap: "wrap", gap: "12px" } },
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "16px" } },
+        pi.photoUrl && React.createElement("div", { style: { width: "68px", height: "68px", borderRadius: "50%", border: `2px solid ${accent}`, overflow: "hidden", flexShrink: 0, boxShadow: `0 0 20px ${accent}44` } }, React.createElement("img", { src: pi.photoUrl, alt: "profile", style: { width: "100%", height: "100%", objectFit: "cover" } })),
+        React.createElement("div", null, React.createElement("h1", { style: { fontSize: "22pt", fontWeight: 800, margin: "0 0 3px", color: "#fff" } }, pi.name || "Your Name"), React.createElement("p", { style: { margin: 0, fontSize: "10pt", color: lavender, fontWeight: 500 } }, pi.title || "Your Job Title"))
+      ),
+      React.createElement("div", { style: { textAlign: "right", fontSize: "8pt", color: "rgba(200,190,255,0.7)", lineHeight: 1.9 } }, pi.phone && React.createElement("div", null, "📞 ", pi.phone), pi.email && React.createElement("div", null, "✉ ", pi.email), pi.location && React.createElement("div", null, "📍 ", pi.location), pi.website && React.createElement("div", null, "🌐 ", pi.website))
+    ),
+    React.createElement("div", { style: { display: "flex", gap: "12px", alignItems: "flex-start", flexWrap: "wrap" } },
+      React.createElement("div", { style: { width: "68mm", flexShrink: 0, minWidth: "180px" } },
+        cv.skills?.some(s => s.name) && React.createElement(PreviewCard, null, React.createElement(PreviewSectionTitle, { color: teal }, "Expertise"), React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: "5px", marginTop: "4px" } }, cv.skills.filter(s => s.name).map(s => React.createElement("span", { key: s.id, style: { padding: "4px 10px", borderRadius: "20px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", fontSize: "7.5pt", color: "rgba(230,220,255,0.85)", whiteSpace: "nowrap" } }, s.name)))),
+        cv.education?.some(e => e.institution) && React.createElement(PreviewCard, null, React.createElement(PreviewSectionTitle, { color: teal }, "Education"), cv.education.filter(e => e.institution).map(ed => React.createElement("div", { key: ed.id, style: { marginBottom: "10px" } }, React.createElement("div", { style: { fontWeight: 700, fontSize: "8.5pt", color: "#fff" } }, ed.degree, ed.field ? ` of ${ed.field}` : ""), React.createElement("div", { style: { fontSize: "7.5pt", color: "rgba(200,190,255,0.75)" } }, ed.institution), (ed.startDate || ed.endDate) && React.createElement("div", { style: { fontSize: "7.5pt", color: lavender, marginTop: "2px" } }, ed.endDate || ed.startDate)))),
+        cv.languages?.some(l => l.name) && React.createElement(PreviewCard, null, React.createElement(PreviewSectionTitle, { color: teal }, "Languages"), cv.languages.filter(l => l.name).map(l => React.createElement("div", { key: l.id, style: { fontSize: "8pt", marginBottom: "5px" } }, React.createElement("span", { style: { fontWeight: 700, color: "#fff" } }, l.name, ": "), React.createElement("span", { style: { color: "rgba(200,190,255,0.7)" } }, l.proficiency)))),
+        cv.certifications?.some(c => c.name) && React.createElement(PreviewCard, null, React.createElement(PreviewSectionTitle, { color: teal }, "Certifications"), cv.certifications.filter(c => c.name).map(c => React.createElement("div", { key: c.id, style: { marginBottom: "6px" } }, React.createElement("div", { style: { fontWeight: 700, fontSize: "8pt", color: "#fff" } }, c.name), c.issuer && React.createElement("div", { style: { fontSize: "7.5pt", color: lavender } }, c.issuer), c.date && React.createElement("div", { style: { fontSize: "7pt", color: T.muted } }, c.date)))),
+        cv.references?.some(r => r.name) && React.createElement(PreviewCard, null, React.createElement(PreviewSectionTitle, { color: teal }, "References"), cv.references.filter(r => r.name).map(r => React.createElement("div", { key: r.id, style: { marginBottom: "9px" } }, React.createElement("div", { style: { fontWeight: 700, fontSize: "8pt", color: "#fff" } }, r.name), React.createElement("div", { style: { fontSize: "7.5pt", color: lavender } }, r.title, r.company ? ` / ${r.company}` : ""), r.phone && React.createElement("div", { style: { fontSize: "7.5pt", color: T.muted } }, "Phone: ", r.phone), r.email && React.createElement("div", { style: { fontSize: "7.5pt", color: T.muted } }, "Email: ", r.email)))),
+        cv.hobbies && React.createElement(PreviewCard, null, React.createElement(PreviewSectionTitle, { color: teal }, "Hobbies"), React.createElement("p", { style: { margin: 0, fontSize: "8pt", color: "rgba(200,190,255,0.75)" } }, cv.hobbies))
+      ),
+      React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+        pi.summary && React.createElement(PreviewCard, { glow: true }, React.createElement(PreviewSectionTitle, { color: teal }, "About"), React.createElement("p", { style: { margin: 0, fontSize: "8.5pt", color: "rgba(220,210,255,0.85)", lineHeight: 1.75 } }, pi.summary)),
+        cv.experience?.some(e => e.company || e.role) && React.createElement(PreviewCard, null, React.createElement(PreviewSectionTitle, { color: teal }, "Experience"), cv.experience.filter(e => e.company || e.role).map(exp => React.createElement("div", { key: exp.id, style: { marginBottom: "14px", position: "relative", paddingLeft: "16px" } }, React.createElement("div", { style: { position: "absolute", left: "-1px", top: "5px", width: "9px", height: "9px", borderRadius: "50%", background: accent, boxShadow: `0 0 8px ${accent}88` } }), React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2px", flexWrap: "wrap" } }, React.createElement("strong", { style: { fontSize: "10pt", color: "#fff" } }, exp.role), React.createElement("span", { style: { fontSize: "7.5pt", background: "rgba(255,255,255,0.05)", borderRadius: "6px", padding: "1px 7px", whiteSpace: "nowrap" } }, exp.startDate, exp.startDate && " – ", exp.current ? "Present" : exp.endDate)), React.createElement("div", { style: { fontSize: "8pt", color: lavender, marginBottom: "5px" } }, exp.company), exp.bullets?.filter(b => b.trim()).map((b, i) => React.createElement("div", { key: i, style: { fontSize: "8pt", color: "rgba(210,200,255,0.78)", lineHeight: 1.65, marginBottom: "3px", paddingLeft: "8px", borderLeft: "1.5px solid rgba(255,255,255,0.08)" } }, b)))))
+      )
+    )
+  );
+}
+
+// --------------------------------------------------------------
+// ScoreRing
+// --------------------------------------------------------------
+function ScoreRing({ score }) {
+  const color = score >= 80 ? "#4ade80" : score >= 55 ? "#f59e0b" : "#f87171";
+  const r = 16, circ = 2 * Math.PI * r;
+  const dash = (score / 100) * circ;
+  return React.createElement("div", { style: { position: "relative", width: "44px", height: "44px" } },
+    React.createElement("svg", { width: "44", height: "44", viewBox: "0 0 44 44", style: { transform: "rotate(-90deg)" } },
+      React.createElement("circle", { cx: "22", cy: "22", r: r, fill: "none", stroke: "rgba(255,255,255,.08)", strokeWidth: "4" }),
+      React.createElement("circle", { cx: "22", cy: "22", r: r, fill: "none", stroke: color, strokeWidth: "4", strokeDasharray: `${dash} ${circ}`, strokeLinecap: "round", style: { transition: "stroke-dasharray .6s ease" } })
+    ),
+    React.createElement("div", { style: { position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" } }, React.createElement("span", { style: { fontSize: "10px", fontWeight: 800, color, lineHeight: 1 } }, score))
+  );
+}
+
+// --------------------------------------------------------------
+// MAIN APP
+// --------------------------------------------------------------
+function App() {
+  const previewRef = React.useRef(null);
+  const [cv, setCv] = React.useState(() => { try { const s = localStorage.getItem("ats_cv_v2"); return s ? JSON.parse(s) : EMPTY_CV; } catch { return EMPTY_CV; } });
+  const [panel, setPanel] = React.useState("personal");
+  const [isGen, setIsGen] = React.useState(false);
+  const [showTips, setShowTips] = React.useState(false);
+  const saveStatus = useAutosave(cv);
+  const { score, tips } = React.useMemo(() => computeATSScore(cv), [cv]);
+  React.useEffect(() => injectPrintCSS(), []);
+  const setP = (k, v) => setCv(c => ({ ...c, personalInfo: { ...c.personalInfo, [k]: v } }));
+  const togATS = () => setCv(c => ({ ...c, atsMode: !c.atsMode }));
+  const reset = () => { if (confirm("Reset all CV data?")) { setCv(EMPTY_CV); localStorage.removeItem("ats_cv_v2"); } };
+  const exportPDF = () => { setIsGen(true); setTimeout(() => { window.print(); setIsGen(false); }, 200); };
+  const shareWA = () => { window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`Hi! Here's my CV – ${cv.personalInfo?.name || "Resume"} ${cv.personalInfo?.website || ""}`)}`, "_blank"); };
+  // dynamic array helpers (abbreviated for length but included via original pattern)
+  const addExp = () => setCv(c => ({ ...c, experience: [...c.experience, { id: crypto.randomUUID(), company: "", role: "", startDate: "", endDate: "", current: false, bullets: [""] }] }));
+  const rmExp = id => setCv(c => ({ ...c, experience: c.experience.filter(e => e.id !== id) }));
+  const updExp = (id, k, v) => setCv(c => ({ ...c, experience: c.experience.map(e => e.id === id ? { ...e, [k]: v } : e) }));
+  const addBullet = id => setCv(c => ({ ...c, experience: c.experience.map(e => e.id === id ? { ...e, bullets: [...e.bullets, ""] } : e) }));
+  const rmBullet = (id, i) => setCv(c => ({ ...c, experience: c.experience.map(e => e.id === id ? { ...e, bullets: e.bullets.filter((_, bi) => bi !== i) } : e) }));
+  const updBullet = (id, i, v) => setCv(c => ({ ...c, experience: c.experience.map(e => e.id === id ? { ...e, bullets: e.bullets.map((b, bi) => bi === i ? v : b) } : e) }));
+  // (education, skills, languages, certs, refs similar – placeholders but all functions available)
+  const addEdu = () => setCv(c => ({ ...c, education: [...c.education, { id: crypto.randomUUID(), institution: "", degree: "", field: "", startDate: "", endDate: "", description: "" }] }));
+  const rmEdu = id => setCv(c => ({ ...c, education: c.education.filter(e => e.id !== id) }));
+  const updEdu = (id, k, v) => setCv(c => ({ ...c, education: c.education.map(e => e.id === id ? { ...e, [k]: v } : e) }));
+  const addSkl = () => setCv(c => ({ ...c, skills: [...c.skills, { id: crypto.randomUUID(), name: "", level: 75 }] }));
+  const rmSkl = id => setCv(c => ({ ...c, skills: c.skills.filter(s => s.id !== id) }));
+  const updSkl = (id, k, v) => setCv(c => ({ ...c, skills: c.skills.map(s => s.id === id ? { ...s, [k]: v } : s) }));
+  const addLng = () => setCv(c => ({ ...c, languages: [...c.languages, { id: crypto.randomUUID(), name: "", proficiency: "Fluent" }] }));
+  const rmLng = id => setCv(c => ({ ...c, languages: c.languages.filter(l => l.id !== id) }));
+  const updLng = (id, k, v) => setCv(c => ({ ...c, languages: c.languages.map(l => l.id === id ? { ...l, [k]: v } : l) }));
+  const addCrt = () => setCv(c => ({ ...c, certifications: [...c.certifications, { id: crypto.randomUUID(), name: "", issuer: "", date: "", url: "" }] }));
+  const rmCrt = id => setCv(c => ({ ...c, certifications: c.certifications.filter(x => x.id !== id) }));
+  const updCrt = (id, k, v) => setCv(c => ({ ...c, certifications: c.certifications.map(x => x.id === id ? { ...x, [k]: v } : x) }));
+  const addRef = () => setCv(c => ({ ...c, references: [...c.references, { id: crypto.randomUUID(), name: "", title: "", company: "", phone: "", email: "" }] }));
+  const rmRef = id => setCv(c => ({ ...c, references: c.references.filter(r => r.id !== id) }));
+  const updRef = (id, k, v) => setCv(c => ({ ...c, references: c.references.map(r => r.id === id ? { ...r, [k]: v } : r) }));
+  const navItems = [{ id: "personal", label: "Personal", icon: "User" }, { id: "experience", label: "Experience", icon: "Briefcase" }, { id: "education", label: "Education", icon: "GraduationCap" }, { id: "skills", label: "Skills", icon: "Star" }, { id: "languages", label: "Languages", icon: "Globe" }, { id: "certifications", label: "Certs", icon: "Award" }, { id: "references", label: "References", icon: "BookOpen" }];
+  return React.createElement("div", { style: { minHeight: "100vh", background: `linear-gradient(160deg,${T.bg} 0%,#130f2a 50%,#0f1628 100%)`, color: T.white, fontFamily: "'Inter',system-ui,sans-serif", display: "flex", flexDirection: "column" } },
+    React.createElement("header", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", height: "58px", background: T.header, borderBottom: "1px solid rgba(255,255,255,0.07)", backdropFilter: "blur(16px)", position: "sticky", top: 0, zIndex: 100, flexWrap: "wrap", gap: "8px" } },
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "9px" } }, React.createElement("div", { style: { width: "32px", height: "32px", borderRadius: "10px", background: "linear-gradient(135deg,#7c3aed,#ec4899)", display: "flex", alignItems: "center", justifyContent: "center" } }, React.createElement(Icon, { name: "FileText", size: 16, color: "#fff" })), React.createElement("div", null, React.createElement("div", { style: { fontSize: "14px", fontWeight: 800 } }, "ATS", React.createElement("span", { style: { color: T.accent } }, "CV"), React.createElement("div", { style: { fontSize: "9px", color: T.muted } }, "Intelligent Resume Builder"))),
+      React.createElement("div", { className: "hide-scrollbar", style: { display: "flex", alignItems: "center", gap: "2px", overflowX: "auto", flex: "1 1 auto", justifyContent: "center" } }, navItems.map(n => React.createElement(NavPill, { key: n.id, active: panel === n.id, onClick: () => setPanel(n.id), icon: React.createElement(Icon, { name: n.icon, size: 12 }), label: n.label }))),
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 } },
+        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "5px", padding: "4px 10px", borderRadius: "20px", background: "rgba(255,255,255,0.05)" } }, React.createElement("div", { style: { width: "6px", height: "6px", borderRadius: "50%", background: saveStatus === "saved" ? "#4ade80" : saveStatus === "saving" ? "#f59e0b" : "rgba(255,255,255,0.2)" } }), React.createElement("span", { style: { fontSize: "10px", color: T.muted } }, saveStatus === "saved" ? "Saved" : saveStatus === "saving" ? "Saving…" : "Auto-save")),
+        React.createElement("div", { onClick: () => setShowTips(t => !t), style: { cursor: "pointer" } }, React.createElement(ScoreRing, { score: score })),
+        React.createElement("button", { onClick: togATS, style: { display: "flex", alignItems: "center", gap: "6px", padding: "7px 12px", borderRadius: "20px", border: "none", cursor: "pointer", fontSize: "10px", fontWeight: 700, background: cv.atsMode ? "linear-gradient(135deg,rgba(34,197,94,.25),rgba(34,197,94,.1))" : "rgba(255,255,255,0.06)", color: cv.atsMode ? "#4ade80" : T.muted } }, React.createElement(Icon, { name: cv.atsMode ? "Eye" : "EyeOff", size: 12 }), cv.atsMode ? "ATS Mode" : "Visual"),
+        React.createElement("button", { onClick: exportPDF, disabled: isGen, style: { display: "flex", alignItems: "center", gap: "6px", padding: "7px 14px", borderRadius: "20px", border: "none", cursor: "pointer", background: "linear-gradient(135deg,#7c3aed,#ec4899)", color: "#fff", fontSize: "11px", fontWeight: 700 } }, React.createElement(Icon, { name: "Download", size: 13 }), "PDF"),
+        React.createElement("button", { onClick: shareWA, style: { display: "flex", alignItems: "center", gap: "6px", padding: "7px 14px", borderRadius: "20px", border: "none", cursor: "pointer", background: "rgba(37,211,102,0.15)", color: "#25d366" } }, React.createElement(Icon, { name: "Share2", size: 13 }), "Share"),
+        React.createElement("button", { onClick: reset, style: { width: "32px", height: "32px", borderRadius: "10px", background: "rgba(255,255,255,0.05)", color: T.muted } }, React.createElement(Icon, { name: "RefreshCw", size: 13 }))
+      )
+    ),
+    showTips && React.createElement("div", { style: { background: "rgba(20,12,45,0.97)", borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "12px 24px", display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" } }, React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "6px" } }, React.createElement(Icon, { name: "Zap", size: 12, color: T.accent }), React.createElement("span", { style: { fontSize: "10px", fontWeight: 800, color: T.accent } }, "ATS Tips")), tips.length === 0 ? React.createElement("span", { style: { fontSize: "11px", color: "#4ade80" } }, "✓ Your CV is fully optimized!") : tips.map((t, i) => React.createElement("div", { key: i, style: { padding: "4px 10px", borderRadius: "20px", background: "rgba(244,114,182,.08)", fontSize: "10px" } }, React.createElement(Icon, { name: "AlertCircle", size: 10, color: T.accent }), " ", t))),
+    React.createElement("div", { className: "main-layout", style: { display: "flex", flex: 1, overflow: "hidden" } },
+      React.createElement("div", { className: "form-panel", style: { width: "340px", flexShrink: 0, overflowY: "auto", borderRight: "1px solid rgba(255,255,255,0.07)", padding: "16px", background: "rgba(255,255,255,0.015)" } },
+        panel === "personal" && React.createElement(React.Fragment, null, React.createElement(PanelHeader, { label: "Personal Information", icon: React.createElement(Icon, { name: "User", size: 14, color: T.teal }) }), React.createElement(FField, { label: "Full Name" }, React.createElement(Inp, { value: cv.personalInfo.name, onChange: v => setP("name", v), placeholder: "Olivia Watson" })), React.createElement(FField, { label: "Job Title" }, React.createElement(Inp, { value: cv.personalInfo.title, onChange: v => setP("title", v), placeholder: "UI/UX Designer" })), React.createElement(FField, { label: "Email" }, React.createElement(Inp, { value: cv.personalInfo.email, onChange: v => setP("email", v), placeholder: "hello@email.com" })), React.createElement(FField, { label: "Phone" }, React.createElement(Inp, { value: cv.personalInfo.phone, onChange: v => setP("phone", v), placeholder: "+1 23456 78910" })), React.createElement(FField, { label: "Location" }, React.createElement(Inp, { value: cv.personalInfo.location, onChange: v => setP("location", v), placeholder: "123 Anywhere St" })), React.createElement(FField, { label: "Website" }, React.createElement(Inp, { value: cv.personalInfo.website, onChange: v => setP("website", v), placeholder: "www.reallygreatsite.com" })), React.createElement(FField, { label: "LinkedIn" }, React.createElement(Inp, { value: cv.personalInfo.linkedin, onChange: v => setP("linkedin", v) })), React.createElement(FField, { label: "Photo URL" }, React.createElement(Inp, { value: cv.personalInfo.photoUrl, onChange: v => setP("photoUrl", v) })), React.createElement(FField, { label: "Professional Summary" }, React.createElement(Tarea, { value: cv.personalInfo.summary, onChange: v => setP("summary", v), rows: 4 })), React.createElement(FField, { label: "Hobbies" }, React.createElement(Inp, { value: cv.hobbies, onChange: v => setCv(c => ({ ...c, hobbies: v })) }))),
+        panel === "experience" && React.createElement(React.Fragment, null, React.createElement(PanelHeader, { label: "Work Experience", icon: React.createElement(Icon, { name: "Briefcase", size: 14, color: T.teal }), onAdd: addExp }), cv.experience.map((exp, idx) => React.createElement(Collapsible, { key: exp.id, title: exp.role || exp.company || `Position ${idx + 1}`, icon: React.createElement(Icon, { name: "Briefcase", size: 11, color: T.accent }), defaultOpen: idx === 0, accent: true }, React.createElement(FField, { label: "Job Title" }, React.createElement(Inp, { value: exp.role, onChange: v => updExp(exp.id, "role", v) })), React.createElement(FField, { label: "Company" }, React.createElement(Inp, { value: exp.company, onChange: v => updExp(exp.id, "company", v) })), React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" } }, React.createElement(FField, { label: "Start" }, React.createElement(Inp, { value: exp.startDate, onChange: v => updExp(exp.id, "startDate", v) })), React.createElement(FField, { label: "End" }, React.createElement(Inp, { value: exp.current ? "Present" : exp.endDate, onChange: v => updExp(exp.id, "endDate", v) }))), React.createElement("label", { style: { display: "flex", alignItems: "center", gap: "7px", fontSize: "11px", marginBottom: "12px" } }, React.createElement("input", { type: "checkbox", checked: exp.current, onChange: e => updExp(exp.id, "current", e.target.checked), style: { accentColor: T.accent } }), "Currently working"), React.createElement("div", { style: { marginBottom: "10px" } }, React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: "6px" } }, React.createElement("span", { style: { fontSize: "10px", fontWeight: 700, color: T.teal } }, "Bullet Points"), React.createElement("button", { onClick: () => addBullet(exp.id), style: { background: "none", border: "none", color: T.teal, cursor: "pointer", fontSize: "10px" } }, React.createElement(Icon, { name: "Plus", size: 10 }), " Add")), exp.bullets.map((b, i) => React.createElement("div", { key: i, style: { display: "flex", gap: "6px", marginBottom: "5px" } }, React.createElement(Inp, { value: b, onChange: v => updBullet(exp.id, i, v), placeholder: "Achievement..." }), React.createElement("button", { onClick: () => rmBullet(exp.id, i), style: { background: "transparent", border: "none", color: T.muted } }, React.createElement(Icon, { name: "X", size: 11 }))))), React.createElement("button", { onClick: () => rmExp(exp.id), style: { color: "rgba(248,113,113,0.7)", fontSize: "10px", background: "none", border: "none", cursor: "pointer", marginTop: "6px" } }, React.createElement(Icon, { name: "Trash2", size: 11 }), " Remove")))),
+        panel === "education" && React.createElement(React.Fragment, null, React.createElement(PanelHeader, { label: "Education", icon: React.createElement(Icon, { name: "GraduationCap", size: 14, color: T.teal }), onAdd: addEdu }), cv.education.map((ed, idx) => React.createElement(Collapsible, { key: ed.id, title: ed.institution || `Education ${idx + 1}`, icon: React.createElement(Icon, { name: "GraduationCap", size: 11, color: T.teal }) }, React.createElement(FField, { label: "Institution" }, React.createElement(Inp, { value: ed.institution, onChange: v => updEdu(ed.id, "institution", v) })), React.createElement(FField, { label: "Degree" }, React.createElement(Inp, { value: ed.degree, onChange: v => updEdu(ed.id, "degree", v) })), React.createElement(FField, { label: "Field" }, React.createElement(Inp, { value: ed.field, onChange: v => updEdu(ed.id, "field", v) })), React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" } }, React.createElement(FField, { label: "Start" }, React.createElement(Inp, { value: ed.startDate, onChange: v => updEdu(ed.id, "startDate", v) })), React.createElement(FField, { label: "End" }, React.createElement(Inp, { value: ed.endDate, onChange: v => updEdu(ed.id, "endDate", v) }))), React.createElement(FField, { label: "Description" }, React.createElement(Tarea, { value: ed.description, onChange: v => updEdu(ed.id, "description", v) })), React.createElement("button", { onClick: () => rmEdu(ed.id), style: { color: "rgba(248,113,113,0.7)", fontSize: "10px", background: "none", border: "none" } }, React.createElement(Icon, { name: "Trash2", size: 11 }), " Remove")))),
+        panel === "skills" && React.createElement(React.Fragment, null, React.createElement(PanelHeader, { label: "Skills", icon: React.createElement(Icon, { name: "Star", size: 14, color: T.teal }), onAdd: addSkl }), cv.skills.map(s => React.createElement("div", { key: s.id, style: { display: "flex", alignItems: "center", gap: "7px", marginBottom: "9px" } }, React.createElement(Inp, { value: s.name, onChange: v => updSkl(s.id, "name", v), placeholder: "Skill" }), React.createElement("div", { style: { textAlign: "center" } }, React.createElement("input", { type: "range", min: 20, max: 100, step: 10, value: s.level, onChange: e => updSkl(s.id, "level", parseInt(e.target.value)), style: { width: "70px", accentColor: T.accent } }), React.createElement("div", { style: { fontSize: "9px", color: T.accent } }, levelLabel(s.level))), React.createElement("button", { onClick: () => rmSkl(s.id), style: { background: "transparent", border: "none", color: T.muted } }, React.createElement(Icon, { name: "X", size: 11 }))))),
+        panel === "languages" && React.createElement(React.Fragment, null, React.createElement(PanelHeader, { label: "Languages", icon: React.createElement(Icon, { name: "Globe", size: 14, color: T.teal }), onAdd: addLng }), cv.languages.map(l => React.createElement("div", { key: l.id, style: { display: "flex", gap: "7px", alignItems: "center", marginBottom: "8px" } }, React.createElement(Inp, { value: l.name, onChange: v => updLng(l.id, "name", v), placeholder: "English" }), React.createElement(Sel, { value: l.proficiency, onChange: v => updLng(l.id, "proficiency", v), options: ["Native","Fluent","Advanced","Intermediate","Beginner"] }), React.createElement("button", { onClick: () => rmLng(l.id), style: { background: "transparent", border: "none" } }, React.createElement(Icon, { name: "X", size: 11 }))))),
+        panel === "certifications" && React.createElement(React.Fragment, null, React.createElement(PanelHeader, { label: "Certifications", icon: React.createElement(Icon, { name: "Award", size: 14, color: T.teal }), onAdd: addCrt }), cv.certifications.map(c => React.createElement(Collapsible, { key: c.id, title: c.name || "Certification", icon: React.createElement(Icon, { name: "Award", size: 11, color: T.teal }) }, React.createElement(FField, { label: "Name" }, React.createElement(Inp, { value: c.name, onChange: v => updCrt(c.id, "name", v) })), React.createElement(FField, { label: "Issuer" }, React.createElement(Inp, { value: c.issuer, onChange: v => updCrt(c.id, "issuer", v) })), React.createElement(FField, { label: "Date" }, React.createElement(Inp, { value: c.date, onChange: v => updCrt(c.id, "date", v) })), React.createElement("button", { onClick: () => rmCrt(c.id), style: { color: "rgba(248,113,113,0.7)" } }, React.createElement(Icon, { name: "Trash2", size: 11 }), " Remove")))),
+        panel === "references" && React.createElement(React.Fragment, null, React.createElement(PanelHeader, { label: "References", icon: React.createElement(Icon, { name: "BookOpen", size: 14, color: T.teal }), onAdd: addRef }), cv.references.map(r => React.createElement(Collapsible, { key: r.id, title: r.name || "Reference", icon: React.createElement(Icon, { name: "BookOpen", size: 11, color: T.teal }) }, React.createElement(FField, { label: "Name" }, React.createElement(Inp, { value: r.name, onChange: v => updRef(r.id, "name", v) })), React.createElement(FField, { label: "Title" }, React.createElement(Inp, { value: r.title, onChange: v => updRef(r.id, "title", v) })), React.createElement(FField, { label: "Company" }, React.createElement(Inp, { value: r.company, onChange: v => updRef(r.id, "company", v) })), React.createElement(FField, { label: "Email" }, React.createElement(Inp, { value: r.email, onChange: v => updRef(r.id, "email", v) })), React.createElement(FField, { label: "Phone" }, React.createElement(Inp, { value: r.phone, onChange: v => updRef(r.id, "phone", v) })), React.createElement("button", { onClick: () => rmRef(r.id), style: { color: "rgba(248,113,113,0.7)" } }, React.createElement(Icon, { name: "Trash2", size: 11 }), " Remove"))))
+      ),
+      React.createElement("div", { className: "preview-panel", style: { flex: 1, overflow: "auto", background: "rgba(0,0,0,0.25)", display: "flex", flexDirection: "column", alignItems: "center", padding: "24px 20px 40px" } },
+        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", maxWidth: "760px", marginBottom: "16px", flexWrap: "wrap", gap: "8px" } },
+          React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "7px", padding: "6px 14px", borderRadius: "20px", background: cv.atsMode ? "rgba(74,222,128,.08)" : "rgba(244,114,182,.08)", fontSize: "10px", fontWeight: 600 } }, cv.atsMode ? React.createElement(React.Fragment, null, React.createElement(Icon, { name: "CheckCircle", size: 11 }), " ATS Strict Mode") : React.createElement(React.Fragment, null, React.createElement(Icon, { name: "Eye", size: 11 }), " Visual Mode")),
+          React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "8px" } }, React.createElement("span", { style: { fontSize: "10px", color: T.muted } }, "ATS Score"), React.createElement("div", { style: { width: "80px", height: "5px", borderRadius: "3px", background: "rgba(255,255,255,0.08)" } }, React.createElement("div", { style: { height: "100%", width: `${score}%`, background: score >= 80 ? "#4ade80" : score >= 55 ? "#f59e0b" : "#f87171", borderRadius: "3px" } })), React.createElement("span", { style: { fontSize: "11px", fontWeight: 800 } }, score, "/100"))
+        ),
+        React.createElement("div", { className: "cv-preview-container", style: { borderRadius: cv.atsMode ? "0" : "20px", overflow: "auto", boxShadow: "0 24px 80px rgba(0,0,0,0.7)", maxWidth: "100%", background: cv.atsMode ? "#fff" : "transparent" } }, cv.atsMode ? React.createElement(ATSPreview, { cv: cv }) : React.createElement(VisualPreview, { cv: cv })),
+        React.createElement("p", { style: { marginTop: "16px", fontSize: "10px", color: "rgba(200,190,255,0.3)", textAlign: "center" } }, "Switch to ATS Mode before exporting for parser compatibility.")
+      )
+    )
+  );
+}
+function PanelHeader({ label, icon, onAdd }) {
+  return React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" } }, React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "8px" } }, icon, React.createElement("span", { style: { fontSize: "12px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "1px" } }, label)), onAdd && React.createElement("button", { onClick: onAdd, style: { display: "flex", alignItems: "center", gap: "4px", padding: "5px 12px", borderRadius: "20px", border: "none", background: "rgba(167,139,250,.18)", color: T.purple, fontSize: "10px", fontWeight: 700, cursor: "pointer" } }, React.createElement(Icon, { name: "Plus", size: 11 }), "Add")));
+}
+function NavPill({ active, onClick, icon, label }) {
+  return React.createElement("button", { onClick: onClick, style: { display: "flex", alignItems: "center", gap: "6px", padding: "7px 14px", borderRadius: "30px", border: "none", background: active ? "rgba(167,139,250,.2)" : "transparent", color: active ? T.purple : T.muted, fontSize: "11px", fontWeight: active ? 700 : 500, cursor: "pointer", transition: "all .2s", whiteSpace: "nowrap" } }, icon, React.createElement("span", null, label));
+}
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+</body>
+</html>
